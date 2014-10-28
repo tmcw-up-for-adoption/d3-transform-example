@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.dot {
+  stroke: #000;
+}
+
+</style>
+<body>
+<script src="d3.v3.min.js"></script>
+<script>
+
+var margin = {top: 20, right: 20, bottom: 30, left: 40},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var x = d3.scale.linear()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var z = d3.scale.linear()
+    .range([1, 20]);
+
+var color = d3.scale.category10();
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+d3.csv("airports.csv", function(error, data) {
+
+  data.forEach(function(d) {
+    d.longitude_deg = +d.longitude_deg;
+    d.latitude_deg = +d.latitude_deg;
+    d.elevation_ft = +d.elevation_ft;
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.longitude_deg; })).nice();
+  z.domain(d3.extent(data, function(d) { return d.elevation_ft; })).nice();
+  y.domain(d3.extent(data, function(d) { return d.latitude_deg; })).nice();
+
+  scaleControl(x, 'x', 100);
+  scaleControl(y, 'y', 100);
+  scaleControl(z, 'z', 10000);
+  typeControl('type');
+
+  var colorBy = 'type';
+
+  function drawDots() {
+      var dots = svg.selectAll(".dot")
+          .data(data);
+
+      dots.enter().append("circle").attr("class", "dot");
+
+      dots
+          .attr("r", function(d) { return z(d.elevation_ft); })
+          .attr("title", function(d) { return d.name; })
+          .attr("cx", function(d) { return x(d.longitude_deg); })
+          .attr("cy", function(d) { return y(d.latitude_deg); })
+          .style("fill", function(d) { return color(d[colorBy]); });
+   }
+
+    function typeControl(label) {
+        var container = d3.select('body')
+             .append('div');
+        container.append('h2').text(label);
+        container.append('select')
+            .on('change', function() {
+                    colorBy = this.value
+                    drawDots();
+            })
+            .selectAll('option')
+                .data(['type', 'ident'])
+                .enter()
+                .append('option')
+                .attr('value', String)
+                .text(String);
+    }
+
+
+
+    function scaleControl(scale, label, gap) {
+        var container = d3.select('body')
+             .append('div');
+        container.append('h2').text(label);
+
+        container
+            .append('input')
+            .attr('type', 'range')
+            .attr('min', scale.domain()[0] - gap)
+            .attr('max', scale.domain()[0] + gap)
+            .on('input', function() {
+                scale.domain([+this.value, scale.domain()[1]]);
+                drawDots();
+            });
+
+        container
+            .append('input')
+            .attr('type', 'range')
+            .attr('min', scale.domain()[1] - gap)
+            .attr('max', scale.domain()[1] + gap)
+            .on('input', function() {
+                scale.domain([scale.domain()[0], +this.value]);
+                drawDots();
+            });
+    }
+
+   drawDots();
+});
+
+
+</script>
